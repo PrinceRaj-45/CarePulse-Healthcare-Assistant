@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Vitals & BP Tracker | CarePulse Healthcare{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>📈 Health Vitals & Blood Pressure Tracker</h2>
+        <p class="page-subtitle">Record daily readings to monitor blood pressure, glucose levels, and heart rate trends over time.</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="document.getElementById('logVitalSection').scrollIntoView({behavior: 'smooth'})">
+            ➕ Log Today's Reading
+        </button>
+    </div>
+</div>
+
+<!-- Interactive Chart.js Graphs Container -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+    <!-- Chart 1: Blood Pressure Line Chart -->
+    <div class="card" style="margin-bottom:0;">
+        <h3 class="card-title">❤️ Blood Pressure Trends (mm Hg)</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">Systolic (Upper) & Diastolic (Lower) levels over recent checkups</p>
+        <div style="position:relative; height:280px; width:100%;">
+            <canvas id="bpChartCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart 2: Blood Sugar Bar Chart -->
+    <div class="card" style="margin-bottom:0;">
+        <h3 class="card-title">🩸 Blood Glucose Trends (mg/dL)</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">Green: Normal Range (&le;140) | Red: Elevated Levels (>140)</p>
+        <div style="position:relative; height:280px; width:100%;">
+            <canvas id="sugarChartCanvas"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Log New Reading Form -->
+<div class="card" id="logVitalSection">
+    <h3 class="card-title">➕ Record New Health Vitals Reading</h3>
+    <form action="{{ url_for('add_vital_route') }}" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="date">Date *</label>
+                <input type="date" name="date" id="date" class="form-control" value="{{ default_date }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="time">Time</label>
+                <input type="time" name="time" id="time" class="form-control" value="{{ default_time }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="systolic">Systolic (Top BP, mm Hg)</label>
+                <input type="number" name="systolic" id="systolic" class="form-control" placeholder="e.g. 120" min="60" max="250">
+            </div>
+
+            <div class="form-group">
+                <label for="diastolic">Diastolic (Bottom BP, mm Hg)</label>
+                <input type="number" name="diastolic" id="diastolic" class="form-control" placeholder="e.g. 80" min="40" max="150">
+            </div>
+
+            <div class="form-group">
+                <label for="blood_sugar">Blood Sugar (mg/dL)</label>
+                <input type="number" step="0.1" name="blood_sugar" id="blood_sugar" class="form-control" placeholder="e.g. 110">
+            </div>
+
+            <div class="form-group">
+                <label for="sugar_type">Sugar Measurement Type</label>
+                <select name="sugar_type" id="sugar_type" class="form-control">
+                    <option value="Fasting">Fasting (Morning before food)</option>
+                    <option value="Post-Meal">Post-Meal (2 hrs after food)</option>
+                    <option value="Random">Random</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="heart_rate">Heart Rate / Pulse (bpm)</label>
+                <input type="number" name="heart_rate" id="heart_rate" class="form-control" placeholder="e.g. 72" min="40" max="200">
+            </div>
+
+            <div class="form-group">
+                <label for="weight">Body Weight (kg)</label>
+                <input type="number" step="0.1" name="weight" id="weight" class="form-control" placeholder="e.g. 75.0">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:1.25rem;">
+            <label for="v_notes">Context / Symptoms / Doctor Notes</label>
+            <input type="text" name="notes" id="v_notes" class="form-control" placeholder="e.g. Measured after 15 min rest, felt slight dizziness in afternoon">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Vital Log</button>
+    </form>
+</div>
+
+<!-- Vitals History Table -->
+<div class="card">
+    <h3 class="card-title">📋 Historical Vitals Log Book</h3>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Blood Pressure</th>
+                    <th>Blood Sugar</th>
+                    <th>Sugar Type</th>
+                    <th>Heart Rate</th>
+                    <th>Weight</th>
+                    <th>Notes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if vitals %}
+                    {% for v in vitals %}
+                    <tr>
+                        <td><strong>{{ v.date }}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">{{ v.time }}</span></td>
+                        <td>
+                            {% if v.systolic and v.diastolic %}
+                                <strong>{{ v.systolic }}/{{ v.diastolic }}</strong>
+                                {% if v.systolic > 130 %}
+                                    <span class="badge badge-expired" style="font-size:0.7rem;">High</span>
+                                {% else %}
+                                    <span class="badge badge-safe" style="font-size:0.7rem;">Normal</span>
+                                {% endif %}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if v.blood_sugar %}
+                                <strong>{{ v.blood_sugar }}</strong> mg/dL
+                                {% if v.blood_sugar > 140 %}
+                                    <span class="badge badge-expired" style="font-size:0.7rem;">Elevated</span>
+                                {% endif %}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </td>
+                        <td>{{ v.sugar_type or '--' }}</td>
+                        <td>{{ v.heart_rate }} bpm</td>
+                        <td>{{ v.weight }} kg</td>
+                        <td style="font-size:0.82rem; color:var(--text-secondary);">{{ v.notes or 'None' }}</td>
+                        <td>
+                            <form action="{{ url_for('delete_vital_route', vital_id=v.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Delete this record?');" title="Delete">
+                                    🗑️
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                            No vitals recorded yet.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

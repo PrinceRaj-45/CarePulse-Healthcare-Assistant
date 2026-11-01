@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Routine | CarePulse Healthcare{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>⏰ Daily Medication Timetable</h2>
+        <p class="page-subtitle">Organize your daily prescriptions across Morning, Afternoon, and Night slots. Never miss a dose again.</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="document.getElementById('addRoutineCard').scrollIntoView({behavior: 'smooth'})">
+            ➕ Add Medicine to Routine
+        </button>
+    </div>
+</div>
+
+<!-- Three Time Slots Display -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+    {% for slot, icon, badge_bg in [('Morning', '🌅', '#fef3c7'), ('Afternoon', '☀️', '#e0f2fe'), ('Night', '🌙', '#ede9fe')] %}
+    <div class="card" style="margin-bottom:0; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-subtle);">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <span style="font-size:1.6rem;">{{ icon }}</span>
+                <div>
+                    <h3 style="font-size:1.15rem; font-weight:700;">{{ slot }} Doses</h3>
+                    <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">{{ schedule[slot]|length }} Prescriptions</span>
+                </div>
+            </div>
+            <span style="background:{{ badge_bg }}; padding:0.25rem 0.65rem; border-radius:999px; font-size:0.75rem; font-weight:700;">
+                {% if slot == 'Morning' %}08:00 AM{% elif slot == 'Afternoon' %}01:30 PM{% else %}09:30 PM{% endif %}
+            </span>
+        </div>
+
+        <div style="flex:1;">
+            {% if schedule[slot] %}
+                {% for item in schedule[slot] %}
+                <div class="routine-item {% if item.is_taken_today == 1 %}taken{% endif %}" id="routine-item-{{ item.id }}">
+                    <div>
+                        <div class="med-title" style="font-weight:700; font-size:0.95rem;">
+                            {{ item.medicine_name }}
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.2rem;">
+                            <strong>{{ item.dosage }}</strong> &bull; {{ item.meal_relation }}
+                        </div>
+                        <div class="taken-status-text" style="font-size:0.72rem; color:{% if item.is_taken_today == 1 %}#166534{% else %}#d97706{% endif %}; font-weight:700; margin-top:0.25rem;">
+                            {% if item.is_taken_today == 1 %}✅ Taken Today{% else %}⏳ Pending{% endif %}
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <button class="btn btn-sm {% if item.is_taken_today == 1 %}btn-outline{% else %}btn-primary{% endif %} routine-toggle-btn" 
+                                data-id="{{ item.id }}">
+                            {% if item.is_taken_today == 1 %}Mark Pending ↺{% else %}Mark as Taken ✓{% endif %}
+                        </button>
+
+                        <form action="{{ url_for('delete_routine_item', item_id=item.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Remove {{ item.medicine_name }} from routine?');" title="Remove">
+                                ✕
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.88rem;">
+                    No medicines scheduled for {{ slot }}.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Routine Prescription Form -->
+<div class="card" id="addRoutineCard">
+    <h3 class="card-title">➕ Add Medicine to Routine Timetable</h3>
+    <form action="{{ url_for('add_routine_item') }}" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="medicine_name">Medicine Name *</label>
+                <input type="text" name="medicine_name" id="medicine_name" class="form-control" placeholder="e.g. Metformin / Pantoprazole" required>
+            </div>
+
+            <div class="form-group">
+                <label for="r_dosage">Dosage / Instructions</label>
+                <input type="text" name="dosage" id="r_dosage" class="form-control" placeholder="e.g. 1 Tablet, 500mg, 1 Capsule">
+            </div>
+
+            <div class="form-group">
+                <label for="time_slot">Daily Time Slot *</label>
+                <select name="time_slot" id="time_slot" class="form-control" required>
+                    <option value="Morning">🌅 Morning Slot (Breakfast)</option>
+                    <option value="Afternoon">☀️ Afternoon Slot (Lunch)</option>
+                    <option value="Night">🌙 Night Slot (Dinner / Bedtime)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="meal_relation">Meal Relation</label>
+                <select name="meal_relation" id="meal_relation" class="form-control">
+                    <option value="Before Meal (Empty Stomach)">Before Meal (Empty Stomach)</option>
+                    <option value="After Meal">After Meal</option>
+                    <option value="With Meal">With Meal</option>
+                    <option value="Before Bedtime">Before Bedtime</option>
+                    <option value="Anytime As Needed">Anytime As Needed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="days">Frequency</label>
+                <input type="text" name="days" id="days" class="form-control" value="Daily" placeholder="e.g. Daily, Alternate Days, Sundays">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add to Schedule</button>
+    </form>
+</div>
+{% endblock %}

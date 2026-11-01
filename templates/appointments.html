@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Appointments | CarePulse Healthcare{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>🩺 Doctor Appointments & Checkups</h2>
+        <p class="page-subtitle">Schedule, track, and manage your upcoming doctor visits, specialist consultations, and checkups.</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="document.getElementById('scheduleSection').scrollIntoView({behavior: 'smooth'})">
+            ➕ Schedule New Visit
+        </button>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="filter-bar" style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <a href="{{ url_for('appointments', status='all') }}" class="btn {% if filter_status == 'all' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+        All Appointments
+    </a>
+    <a href="{{ url_for('appointments', status='upcoming') }}" class="btn {% if filter_status == 'upcoming' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+        🟢 Upcoming
+    </a>
+    <a href="{{ url_for('appointments', status='completed') }}" class="btn {% if filter_status == 'completed' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+        ✅ Completed
+    </a>
+    <a href="{{ url_for('appointments', status='passed') }}" class="btn {% if filter_status == 'passed' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+        ⏳ Past Visits
+    </a>
+</div>
+
+<!-- Main Layout: Grid with Form & Appointments List -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem; align-items: start;">
+    
+    <!-- 1. Schedule Form Card -->
+    <div class="card" id="scheduleSection">
+        <h3 class="card-title">📅 Schedule an Appointment</h3>
+        <form action="{{ url_for('add_appointment_route') }}" method="POST">
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="doctor_name">Doctor's Name *</label>
+                <input type="text" name="doctor_name" id="doctor_name" class="form-control" placeholder="e.g. Dr. Ananya Sen" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="specialty">Specialty / Department</label>
+                <select name="specialty" id="specialty" class="form-control">
+                    <option value="General Physician">General Physician (Family Doctor)</option>
+                    <option value="Cardiologist">Cardiologist (Heart Specialist)</option>
+                    <option value="Dentist">Dentist (Dental Care)</option>
+                    <option value="Eye Specialist">Eye Specialist (Ophthalmologist)</option>
+                    <option value="ENT Specialist">ENT (Ear, Nose & Throat)</option>
+                    <option value="Orthopedic">Orthopedic (Bone & Joint)</option>
+                    <option value="Dermatologist">Dermatologist (Skin)</option>
+                    <option value="Dietitian">Dietitian / Nutritionist</option>
+                    <option value="Other">Other Specialist</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="hospital_clinic">Hospital / Clinic / Address</label>
+                <input type="text" name="hospital_clinic" id="hospital_clinic" class="form-control" placeholder="e.g. City Care Hospital, Sector 14">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label for="appointment_date">Date *</label>
+                    <input type="date" name="appointment_date" id="appointment_date" class="form-control" value="{{ today_date }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="appointment_time">Time</label>
+                    <input type="time" name="appointment_time" id="appointment_time" class="form-control" value="10:30">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label for="reason">Reason / Symptoms / Instructions</label>
+                <input type="text" name="reason" id="reason" class="form-control" placeholder="e.g. Routine 3-month BP checkup & blood test review">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                ➕ Save Appointment
+            </button>
+        </form>
+    </div>
+
+    <!-- 2. Appointments List Card -->
+    <div class="card">
+        <h3 class="card-title">📋 Scheduled Visits ({{ appointments|length }})</h3>
+
+        {% if appointments %}
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for appt in appointments %}
+                <div style="border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1.1rem; background: {% if appt.computed_status == 'Completed' %}#f8fafc{% elif appt.computed_status == 'Today' %}#f0fdf4{% else %}#ffffff{% endif %}; border-left: 4px solid {% if appt.computed_status == 'Completed' %}#94a3b8{% elif appt.computed_status == 'Today' %}#16a34a{% elif appt.computed_status == 'Passed' %}#f59e0b{% else %}#0284c7{% endif %};">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <strong style="font-size: 1.05rem; color: #0f172a;">{{ appt.doctor_name }}</strong>
+                            <span style="font-size: 0.82rem; background: #e0f2fe; color: #0369a1; padding: 0.15rem 0.5rem; border-radius: 4px; margin-left: 0.4rem;">
+                                {{ appt.specialty }}
+                            </span>
+                        </div>
+
+                        <div>
+                            {% if appt.computed_status == 'Completed' %}
+                                <span class="badge" style="background: #e2e8f0; color: #475569;">✅ Completed</span>
+                            {% elif appt.computed_status == 'Today' %}
+                                <span class="badge badge-safe">🔔 Today!</span>
+                            {% elif appt.computed_status == 'Passed' %}
+                                <span class="badge badge-expiring">⏳ {{ appt.timing_text }}</span>
+                            {% else %}
+                                <span class="badge badge-safe">🟢 {{ appt.timing_text }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
+                        🏥 {{ appt.hospital_clinic or 'Clinic / Chamber not specified' }}
+                    </div>
+
+                    <div style="display: flex; gap: 1.25rem; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+                        <span>📅 <strong>{{ appt.appointment_date }}</strong></span>
+                        {% if appt.appointment_time %}
+                            <span>⏰ <strong>{{ appt.appointment_time }}</strong></span>
+                        {% endif %}
+                    </div>
+
+                    {% if appt.reason %}
+                        <div style="font-size: 0.83rem; background: #f1f5f9; padding: 0.4rem 0.65rem; border-radius: 4px; color: #334155; margin-bottom: 0.75rem;">
+                            💬 <em>{{ appt.reason }}</em>
+                        </div>
+                    {% endif %}
+
+                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px dashed var(--border-subtle); padding-top: 0.6rem;">
+                        <form action="{{ url_for('toggle_appointment_route', app_id=appt.id) }}" method="POST" style="display:inline;">
+                            {% if appt.computed_status == 'Completed' %}
+                                <button type="submit" class="btn btn-outline btn-sm" title="Re-open visit">
+                                    ↺ Mark as Upcoming
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-outline btn-sm" style="color: #16a34a; border-color: #16a34a;" title="Mark finished">
+                                    ✓ Mark Completed
+                                </button>
+                            {% endif %}
+                        </form>
+
+                        <form action="{{ url_for('delete_appointment_route', app_id=appt.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Remove this appointment?');" title="Delete" style="color: #dc2626;">
+                                🗑️
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+                <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🩺</div>
+                <p>No appointments found under this filter.</p>
+                <p style="font-size: 0.82rem;">Use the form to add upcoming visits or checkups.</p>
+            </div>
+        {% endif %}
+
+    </div>
+
+</div>
+{% endblock %}
+

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | CarePulse Healthcare{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>🏥 Health & Medicine Overview</h2>
+        <p class="page-subtitle">Today is <strong>{{ today_date }}</strong> — Stay healthy and on track with your medical routine.</p>
+    </div>
+    <div>
+        <a href="{{ url_for('medicines') }}" class="btn btn-primary" id="addMedQuickBtn">➕ Add Medicine</a>
+        <a href="{{ url_for('vitals') }}" class="btn btn-outline" id="logVitalQuickBtn">📈 Log Vitals</a>
+    </div>
+</div>
+
+<!-- Key Metric Cards -->
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="stat-header">
+            <span>Total In Cabinet</span>
+            <span class="stat-icon">💊</span>
+        </div>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-subtext">Registered medicines</div>
+    </div>
+
+    <div class="stat-card red">
+        <div class="stat-header">
+            <span>Expired Medicines</span>
+            <span class="stat-icon">⚠️</span>
+        </div>
+        <div class="stat-value">{{ stats.expired }}</div>
+        <div class="stat-subtext">Discard immediately!</div>
+    </div>
+
+    <div class="stat-card amber">
+        <div class="stat-header">
+            <span>Expiring Soon</span>
+            <span class="stat-icon">⏳</span>
+        </div>
+        <div class="stat-value">{{ stats.expiring_soon }}</div>
+        <div class="stat-subtext">Within next 30 days</div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="stat-header">
+            <span>Safe to Use</span>
+            <span class="stat-icon">✅</span>
+        </div>
+        <div class="stat-value">{{ stats.safe }}</div>
+        <div class="stat-subtext">Good stock condition</div>
+    </div>
+</div>
+
+<!-- Critical Medicine Expiry Alerts (If any) -->
+{% if urgent_alerts %}
+<div class="card" style="border-left: 5px solid #dc2626; background: #fffcfc;">
+    <h3 class="card-title" style="color: #b91c1c;">
+        🚨 Urgent Expiry Attention Needed
+    </h3>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Category</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for med in urgent_alerts %}
+                <tr>
+                    <td><strong>{{ med.name }}</strong> ({{ med.dosage }})</td>
+                    <td>{{ med.category }}</td>
+                    <td><code>{{ med.expiry_date }}</code></td>
+                    <td>
+                        {% if med.status == 'expired' %}
+                            <span class="badge badge-expired">🔴 {{ med.status_text }}</span>
+                        {% else %}
+                            <span class="badge badge-expiring">🟡 {{ med.status_text }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="{{ url_for('delete_medicine_route', med_id=med.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Remove this medicine from cabinet?');">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Main Dashboard Grid -->
+<div class="dashboard-layout">
+    <!-- Left Column: Today's Routine & Vitals Snapshot -->
+    <div>
+        <!-- Today's Routine Checklist -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                <h3 class="card-title" style="margin-bottom:0;">⏰ Today's Medication Routine</h3>
+                <a href="{{ url_for('routine') }}" class="btn btn-outline btn-sm">Full Schedule →</a>
+            </div>
+
+            {% for slot, items in routine.items() %}
+                <div class="routine-slot-card">
+                    <div class="slot-header">
+                        <span class="slot-title">
+                            {% if slot == 'Morning' %}🌅{% elif slot == 'Afternoon' %}☀️{% else %}🌙{% endif %}
+                            {{ slot }} Doses
+                        </span>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">{{ items|length }} medicines</span>
+                    </div>
+
+                    {% if items %}
+                        {% for item in items %}
+                            <div class="routine-item {% if item.is_taken_today == 1 %}taken{% endif %}" id="routine-item-{{ item.id }}">
+                                <div>
+                                    <div class="med-title" style="font-weight:600; font-size:0.95rem;">
+                                        {{ item.medicine_name }} <span style="font-weight:normal; color:var(--text-secondary); font-size:0.85rem;">({{ item.dosage }})</span>
+                                    </div>
+                                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;">
+                                        {{ item.meal_relation }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm {% if item.is_taken_today == 1 %}btn-outline{% else %}btn-primary{% endif %} routine-toggle-btn" 
+                                            data-id="{{ item.id }}">
+                                        {% if item.is_taken_today == 1 %}Mark Pending ↺{% else %}Mark as Taken ✓{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:var(--text-muted); font-size:0.85rem; padding:0.5rem 0;">No medicines scheduled for this time slot.</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Upcoming Doctor Appointments -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                <h3 class="card-title" style="margin-bottom:0;">🩺 Upcoming Doctor Appointments</h3>
+                <a href="{{ url_for('appointments') }}" class="btn btn-outline btn-sm">All Appointments →</a>
+            </div>
+
+            {% if upcoming_appointments %}
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for appt in upcoming_appointments %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                    <div>
+                        <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">
+                            {{ appt.doctor_name }} 
+                            <span style="font-weight: normal; font-size: 0.8rem; color: #0284c7;">({{ appt.specialty }})</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">
+                            🏥 {{ appt.hospital_clinic or 'Clinic' }} | ⏰ {{ appt.appointment_time or 'Morning' }}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge {% if appt.computed_status == 'Today' %}badge-expired{% else %}badge-safe{% endif %}" style="font-size: 0.75rem;">
+                            {{ appt.timing_text }}
+                        </span>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            {{ appt.appointment_date }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align:center; padding: 1.5rem; color: var(--text-muted);">
+                <p>No upcoming doctor appointments scheduled.</p>
+                <a href="{{ url_for('appointments') }}" class="btn btn-outline btn-sm" style="margin-top: 0.5rem;">+ Schedule an Appointment</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Emergency ID Card & Quick Actions -->
+    <div>
+        <div class="card" style="border: 2px solid #ef4444; background: #fffdfd;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 class="card-title" style="color: #dc2626; margin-bottom:0;">🚨 Emergency ID</h3>
+                <span class="blood-badge">{{ emergency_profile.blood_group }}</span>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Patient Name</div>
+                <div style="font-size:1.1rem; font-weight:700;">{{ emergency_profile.patient_name }} ({{ emergency_profile.age }} yrs)</div>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Known Allergies</div>
+                <div style="font-size:0.88rem; color:#b91c1c; font-weight:600;">{{ emergency_profile.allergies }}</div>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Emergency Contact</div>
+                <div style="font-size:0.95rem; font-weight:600;">{{ emergency_profile.emergency_contact_name }}</div>
+                <div style="font-size:0.9rem; color:#0284c7; font-weight:700;">📞 {{ emergency_profile.emergency_contact_phone }}</div>
+            </div>
+
+            <div style="margin-bottom:1.25rem;">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Doctor</div>
+                <div style="font-size:0.9rem; font-weight:600;">{{ emergency_profile.doctor_name }}</div>
+                <div style="font-size:0.85rem; color:var(--text-secondary);">📞 {{ emergency_profile.doctor_phone }}</div>
+            </div>
+
+            <a href="{{ url_for('emergency') }}" class="btn btn-outline" style="width:100%; justify-content:center;">View Full Emergency ID →</a>
+        </div>
+
+        <!-- System Tips Card -->
+        <div class="card">
+            <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">💡 Safe Medicine Tips</h4>
+            <ul style="font-size:0.85rem; color:var(--text-secondary); padding-left:1.2rem; line-height:1.7;">
+                <li>Never consume antibiotics or syrups past their expiry date.</li>
+                <li>Store eye drops and insulin in cool temperatures as instructed.</li>
+                <li>Review your cabinet every month to eliminate expired drugs.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

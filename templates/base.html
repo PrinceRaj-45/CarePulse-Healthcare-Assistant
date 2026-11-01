@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CarePulse | Smart Healthcare & Medicine Assistant{% endblock %}</title>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Chart.js CDN for interactive medical data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- Main Navigation Bar -->
+    <nav class="navbar" id="mainNavbar">
+        <div class="nav-container">
+            <a href="{{ url_for('dashboard') }}" class="brand-logo" id="brandLogoLink">
+                <div class="brand-icon">💊</div>
+                <div class="brand-text">
+                    <h1>CarePulse</h1>
+                    <span class="brand-tag">Health & Medicine Assistant</span>
+                </div>
+            </a>
+
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">🏠 Dashboard</a></li>
+                <li><a href="{{ url_for('medicines') }}" class="nav-link {% if request.endpoint == 'medicines' %}active{% endif %}">💊 Medicine Cabinet</a></li>
+                <li><a href="{{ url_for('routine') }}" class="nav-link {% if request.endpoint == 'routine' %}active{% endif %}">⏰ Daily Routine</a></li>
+                <li><a href="{{ url_for('appointments') }}" class="nav-link {% if request.endpoint == 'appointments' %}active{% endif %}">🩺 Doctor Visits</a></li>
+                <li><a href="{{ url_for('emergency') }}" class="nav-link emergency-nav-btn {% if request.endpoint == 'emergency' %}active{% endif %}">🚨 Emergency ID</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Flash Notifications / Alert Toasts -->
+    <div class="alert-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-toast alert-{{ category }}">
+                        <span>{{ message }}</span>
+                        <button onclick="this.parentElement.remove()" style="background:none; border:none; cursor:pointer; font-weight:bold; color:inherit;">✕</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content Block -->
+    <main class="page-container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div>
+                <strong>CarePulse</strong> &copy; 2026 — Personal Healthcare & Medicine Assistant
+            </div>
+            <div>
+                Built with Python, Flask & SQLite | Real-World Healthcare Solution
+            </div>
+        </div>
+    </footer>
+
+    <!-- Master Frontend JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

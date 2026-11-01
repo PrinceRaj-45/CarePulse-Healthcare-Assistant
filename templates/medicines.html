@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Medicine Cabinet | CarePulse Healthcare{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>💊 Medicine Cabinet & Expiry Tracker</h2>
+        <p class="page-subtitle">Track family medicine stocks, monitor expiration dates, and prevent health hazards.</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="document.getElementById('addMedCard').scrollIntoView({behavior: 'smooth'})">
+            ➕ Add New Medicine
+        </button>
+    </div>
+</div>
+
+<!-- Quick Status Filter Pills -->
+<div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:center;">
+    <a href="{{ url_for('medicines', status='all') }}" class="btn btn-sm {% if filter_status == 'all' %}btn-primary{% else %}btn-outline{% endif %}">
+        All ({{ stats.total }})
+    </a>
+    <a href="{{ url_for('medicines', status='expired') }}" class="btn btn-sm {% if filter_status == 'expired' %}btn-danger{% else %}btn-outline{% endif %}">
+        🔴 Expired ({{ stats.expired }})
+    </a>
+    <a href="{{ url_for('medicines', status='expiring_soon') }}" class="btn btn-sm {% if filter_status == 'expiring_soon' %}btn-primary{% else %}btn-outline{% endif %}">
+        🟡 Expiring Soon ({{ stats.expiring_soon }})
+    </a>
+    <a href="{{ url_for('medicines', status='safe') }}" class="btn btn-sm {% if filter_status == 'safe' %}btn-primary{% else %}btn-outline{% endif %}">
+        🟢 Safe Stock ({{ stats.safe }})
+    </a>
+
+    <div style="margin-left:auto; min-width:260px;">
+        <input type="text" id="clientSearchInput" class="form-control" placeholder="🔍 Search medicines, brand, category..." value="{{ search }}">
+    </div>
+</div>
+
+<!-- Medicines Table Card -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Medicine & Dosage</th>
+                    <th>Brand / Mfg</th>
+                    <th>Category</th>
+                    <th>Expiry Date</th>
+                    <th>Status & Days Left</th>
+                    <th>Stock</th>
+                    <th>Instructions / Notes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if medicines %}
+                    {% for med in medicines %}
+                    <tr class="medicine-row">
+                        <td>
+                            <strong>{{ med.name }}</strong>
+                            <div style="font-size:0.8rem; color:var(--text-muted);">{{ med.dosage }}</div>
+                        </td>
+                        <td>{{ med.brand_or_mfg or '--' }}</td>
+                        <td>
+                            <span style="background:#f1f5f9; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.8rem;">
+                                {{ med.category }}
+                            </span>
+                        </td>
+                        <td>
+                            <code>{{ med.expiry_date }}</code>
+                        </td>
+                        <td>
+                            {% if med.status == 'expired' %}
+                                <span class="badge badge-expired">🔴 {{ med.status_text }}</span>
+                            {% elif med.status == 'expiring_soon' %}
+                                <span class="badge badge-expiring">🟡 {{ med.status_text }}</span>
+                            {% else %}
+                                <span class="badge badge-safe">🟢 {{ med.status_text }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ med.quantity }}</strong>
+                            {% if med.quantity <= 2 %}
+                                <span class="badge badge-low-stock" style="margin-left:4px;">Low</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.82rem; color:var(--text-secondary); max-width:200px;">
+                            {{ med.notes or 'None' }}
+                        </td>
+                        <td>
+                            <form action="{{ url_for('delete_medicine_route', med_id=med.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Delete {{ med.name }} from cabinet?');" title="Delete">
+                                    🗑️
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                            No medicines found matching your criteria.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Medicine Form Section -->
+<div class="card" id="addMedCard">
+    <h3 class="card-title">➕ Add New Medicine to Cabinet</h3>
+    <form action="{{ url_for('add_medicine_route') }}" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name">Medicine Name *</label>
+                <input type="text" name="name" id="name" class="form-control" placeholder="e.g. Paracetamol / Telmisartan" required>
+            </div>
+
+            <div class="form-group">
+                <label for="brand_or_mfg">Brand / Manufacturer</label>
+                <input type="text" name="brand_or_mfg" id="brand_or_mfg" class="form-control" placeholder="e.g. Cipla / Dolo-650">
+            </div>
+
+            <div class="form-group">
+                <label for="dosage">Dosage / Strength</label>
+                <input type="text" name="dosage" id="dosage" class="form-control" placeholder="e.g. 500 mg, 1 tablet, 5 ml">
+            </div>
+
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select name="category" id="category" class="form-control">
+                    <option value="General">General / Over the counter</option>
+                    <option value="Fever & Pain">Fever & Pain</option>
+                    <option value="Antibiotic">Antibiotic</option>
+                    <option value="Diabetes">Diabetes</option>
+                    <option value="Hypertension (BP)">Hypertension (BP)</option>
+                    <option value="Vitamins & Minerals">Vitamins & Minerals</option>
+                    <option value="Allergy & Cold">Allergy & Cold</option>
+                    <option value="Antacid / Digestive">Antacid / Digestive</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="expiry_date">Expiry Date *</label>
+                <input type="date" name="expiry_date" id="expiry_date" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="quantity">Quantity in Stock (Tablets/Bottles)</label>
+                <input type="number" name="quantity" id="quantity" class="form-control" value="10" min="1">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:1.25rem;">
+            <label for="notes">Usage Instructions / Doctor Notes</label>
+            <input type="text" name="notes" id="notes" class="form-control" placeholder="e.g. Take after meals, store in refrigerator, avoid if rash occurs">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save to Medicine Cabinet</button>
+    </form>
+</div>
+{% endblock %}
